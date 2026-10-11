@@ -1,0 +1,25 @@
+# NEGATIVE RESULT (kept for reproducibility). Identical to induction_2l_attn except the positional
+# scheme: learned absolute position embeddings instead of ALiBi.
+# Observed (seed 0, 2026-10-11): ~35% val accuracy after 3000 steps (42.5% at 4500 steps of a
+# longer lr=3e-3 diagnostic run); every layer-0 head had previous-token score 0.00; layer 0
+# instead copied tokens from a smeared positional offset (a shortcut). See docs/findings.md.
+name: induction_2l_learnedpos
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: true, norm: pre, positional: learned}
+task:
+  name: induction_repeat
+  params: {n_symbols: 48, seq_len: 40, min_len: 6, max_len: 16}
+train:
+  steps: 3000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  schedule: cosine
+  weight_decay: 0.01
+  grad_clip: 1.0
+  eval_every: 250
+  eval_size: 512
+  log_every: 50
+  checkpoint_every: 500
+  checkpoint_steps: [0, 500, 1000, 2000, 3000]
+  num_threads: 4

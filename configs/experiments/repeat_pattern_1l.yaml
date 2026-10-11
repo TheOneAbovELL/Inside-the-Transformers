@@ -1,0 +1,13 @@
+# Task 1 baseline: periodic continuation.
+name: repeat_pattern_1l
+seed: 0
+model: {d_model: 64, n_layers: 1, n_heads: 4, attn_only: true, positional: alibi}
+task:
+  name: repeat_pattern
+  params: {n_symbols: 16, seq_len: 24, min_period: 2, max_period: 6}
+train:
+  steps: 1500
+  batch_size: 64
+  eval_every: 250
+  eval_size: 512
+  num_threads: 2

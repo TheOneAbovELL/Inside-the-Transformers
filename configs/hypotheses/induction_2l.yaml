@@ -1,0 +1,64 @@
+# Pre-registered circuit hypothesis for 2-layer attention-only models on `induction_repeat`.
+# Written BEFORE running it on any trained model. Thresholds are part of the hypothesis; changing
+# them after seeing results must be recorded as a new hypothesis version.
+name: induction_circuit_2l_v1
+statement: >
+  The model predicts the second copy of a repeated segment with a two-head circuit:
+  (a) a layer-0 "previous-token" head writes the identity of token t-1 into position t;
+  (b) a layer-1 "induction" head forms its KEYS from that information (K-composition), so the
+  query at the current token x attends to the position right after x's earlier occurrence, and
+  its OV circuit copies the attended token into the output.
+behavior:
+  metric: logprob   # mean log-prob of the correct next token over scored (second-copy) positions
+  description: In-context copying of a random segment whose offset varies per example.
+n_examples: 512
+selection_seed: 101   # examples used ONLY to choose candidate heads
+test_seed: 202        # disjoint examples on which every prediction is evaluated
+reference_seed: 303   # examples used for mean ablation statistics
+ablation_method: mean
+alpha: 0.05
+candidates:
+  induction: {select: top, score: induction, layer: 1, k: 1}
+  prev_token: {select: top, score: prev_token, layer: 0, k: 1}
+predictions:
+  - id: P1_pattern_induction
+    claim: The selected layer-1 head attends mostly to the token after the previous occurrence.
+    test: {type: attention_score, score: induction, heads: induction}
+    expect: {op: ">", value: 0.4}
+  - id: P2_pattern_prev
+    claim: The selected layer-0 head attends mostly to the previous position.
+    test: {type: attention_score, score: prev_token, heads: prev_token}
+    expect: {op: ">", value: 0.4}
+  - id: P3_ablate_induction
+    claim: Mean-ablating the induction head strongly reduces log-prob, more than ablating random other heads.
+    test: {type: ablate_heads, heads: induction}
+    expect: {direction: decrease, min_effect: 0.5}
+    control: {n_samples: 30, exclude: [induction, prev_token], seed: 1}
+  - id: P4_ablate_prev
+    claim: Mean-ablating the previous-token head strongly reduces log-prob, more than random other heads.
+    test: {type: ablate_heads, heads: prev_token}
+    expect: {direction: decrease, min_effect: 0.5}
+    control: {n_samples: 30, exclude: [induction, prev_token], seed: 2}
+  - id: P5_path_K
+    claim: Removing the prev-token head's output from ONLY the induction head's key input reduces log-prob.
+    test: {type: path, sender: prev_token, receiver: induction, channel: k, replacement: mean}
+    expect: {direction: decrease, min_effect: 0.5}
+  - id: P6_path_Q_specificity
+    claim: The same intervention on the induction head's QUERY input has little effect (it is K-, not Q-composition).
+    test: {type: path, sender: prev_token, receiver: induction, channel: q, replacement: mean}
+    expect: {direction: none, max_effect: 0.3}
+  - id: P7_path_V_specificity
+    claim: The same intervention on the induction head's VALUE input has little effect.
+    test: {type: path, sender: prev_token, receiver: induction, channel: v, replacement: mean}
+    expect: {direction: none, max_effect: 0.3}
+  - id: P8_patch_induction
+    claim: Patching the induction head's output (scored positions) from clean into first-copy-replaced runs restores most of the log-prob.
+    test: {type: patch_heads, heads: induction, corruption: replace, positions: scored}
+    expect: {recovery_min: 0.5}
+alternatives:
+  - Positional-offset copying (attend a learned distance back) — tested indirectly by variable offsets; a
+    model relying on it should show low induction scores and P5 should fail.
+  - Redundant / distributed circuit — several layer-1 heads share the induction role; single-head
+    ablation (P3) would then underestimate importance and P8 recovery would be partial.
+  - Prev-token information delivered by a different route (e.g. several layer-0 heads, or the
+    positional embedding path) — P4/P5 would show smaller effects than the attention pattern suggests.

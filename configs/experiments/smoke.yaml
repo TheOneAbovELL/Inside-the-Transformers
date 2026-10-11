@@ -1,0 +1,18 @@
+# Minimal end-to-end configuration: validates the installation in well under a minute.
+# Not expected to learn the task; it only exercises every code path.
+name: smoke
+seed: 0
+model: {d_model: 32, n_layers: 2, n_heads: 2, attn_only: true}
+task:
+  name: induction_repeat
+  params: {n_symbols: 24, seq_len: 24, min_len: 4, max_len: 8}
+train:
+  steps: 40
+  batch_size: 16
+  warmup_steps: 5
+  eval_every: 20
+  eval_size: 64
+  log_every: 10
+  checkpoint_every: 20
+  checkpoint_steps: [0, 20]
+  num_threads: 4

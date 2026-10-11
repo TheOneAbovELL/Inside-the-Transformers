@@ -1,0 +1,40 @@
+{
+  "tasks": {
+    "repeat_pattern": {
+      "tokens_sha": "481d3b89ce14061d1f2e",
+      "mask_sha": "a033f80deac3148c4e28"
+    },
+    "assoc_recall": {
+      "tokens_sha": "c1b41eeedebd4c268275",
+      "mask_sha": "383a7d218d7ec92ef116"
+    },
+    "induction_repeat": {
+      "tokens_sha": "ea9558ed5561891d3172",
+      "mask_sha": "001874630fbf40fc33c7"
+    },
+    "induction_pair": {
+      "tokens_sha": "729428638987952aad89",
+      "mask_sha": "a7b3b86a97594be1d39c"
+    }
+  },
+  "model": {
+    "learned": {
+      "logits_sum": 2.087552070617676,
+      "logits_abs_mean": 0.09137707203626633,
+      "logit_0_0_0": 0.0704091340303421,
+      "n_params": 27156
+    },
+    "alibi": {
+      "logits_sum": -7.119579792022705,
+      "logits_abs_mean": 0.09262815117835999,
+      "logit_0_0_0": -0.012789235450327396,
+      "n_params": 26772
+    },
+    "sinusoidal": {
+      "logits_sum": 0.9119014739990234,
+      "logits_abs_mean": 0.09270620346069336,
+      "logit_0_0_0": -0.037508219480514526,
+      "n_params": 26772
+    }
+  }
+}

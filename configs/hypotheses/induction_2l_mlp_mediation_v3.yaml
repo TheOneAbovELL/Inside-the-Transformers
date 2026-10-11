@@ -1,0 +1,48 @@
+# Hypothesis v3 — formulated 2026-10-11 AFTER v2 failed prediction Q3 on induction_2l_mlp seed 0
+# (removing layer-0 HEAD outputs from the induction group's keys cost only 0.39 nats, although the
+# layer-0 heads and the layer-0 MLP are each necessary).
+# Exploratory on induction_2l_mlp seed 0; CONFIRMATORY only on other seeds (seed 1 trained after
+# this file was written).
+name: induction_mlp_mediation_v3
+statement: >
+  In 2-layer models with MLPs, the key-side information used by the layer-1 induction heads is
+  delivered mainly through the layer-0 MLP (layer-0 heads -> MLP0 -> layer-1 keys) rather than by
+  layer-0 heads directly.
+behavior:
+  metric: logprob
+  description: Mean log-prob of the correct next token over second-copy positions.
+n_examples: 512
+selection_seed: 101
+test_seed: 202
+reference_seed: 303
+ablation_method: mean
+alpha: 0.05
+candidates:
+  induction_group: {select: threshold, score: induction, layer: 1, min_score: 0.25}
+  layer0_heads: {select: layer, layer: 0}
+  mlp0: {heads: ["0.mlp"]}
+predictions:
+  - id: M1_mlp0_to_keys
+    claim: Removing the layer-0 MLP output from ONLY the group's key inputs reduces log-prob by >= 1.5 nats.
+    test: {type: path, sender: mlp0, receiver: induction_group, channel: k, replacement: mean}
+    expect: {direction: decrease, min_effect: 1.5}
+  - id: M2_heads_direct_to_keys_small
+    claim: Removing layer-0 HEAD outputs from only the group's keys costs < 1 nat (the direct route is minor).
+    test: {type: path, sender: layer0_heads, receiver: induction_group, channel: k, replacement: mean}
+    expect: {direction: none, max_effect: 1.0}
+  - id: M3_heads_plus_mlp0_to_keys
+    claim: Removing BOTH layer-0 heads and the layer-0 MLP from the group's keys destroys performance (>= 3 nats).
+    test: {type: path, sender: [layer0_heads, mlp0], receiver: induction_group, channel: k, replacement: mean}
+    expect: {direction: decrease, min_effect: 3.0}
+  - id: M4_mlp0_to_queries_smaller
+    claim: Removing the layer-0 MLP from the group's QUERY inputs costs less than 1.5 nats.
+    test: {type: path, sender: mlp0, receiver: induction_group, channel: q, replacement: mean}
+    expect: {direction: none, max_effect: 1.5}
+    requires: [M1_mlp0_to_keys]
+  - id: M5_group_patching
+    claim: Patching the induction group's output restores >= 80% of the gap (same as attention-only models).
+    test: {type: patch_heads, heads: induction_group, corruption: replace, positions: scored}
+    expect: {recovery_min: 0.8}
+alternatives:
+  - MLP0 is necessary for reasons unrelated to the keys (e.g. it feeds queries or values, or writes directly to the logits); M1 would fail.
+  - Layer-0 information reaches the keys through a mixture of routes, with neither dominant; M1 and M2 both fail.

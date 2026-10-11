@@ -1,0 +1,18 @@
+# CONFOUND DEMONSTRATION. Fixed segment length AND fixed prefix => the answer is always at a fixed
+# offset, so a purely positional strategy suffices. Compare its circuit (and its OOD behaviour on
+# variable offsets) with induction_2l_attn.
+name: induction_fixed_offset_2l
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: true}
+task:
+  name: induction_repeat
+  params: {n_symbols: 48, seq_len: 40, min_len: 12, max_len: 12, fixed_prefix_len: 15}
+train:
+  steps: 3000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  eval_every: 250
+  eval_size: 512
+  checkpoint_steps: [0, 3000]
+  num_threads: 2

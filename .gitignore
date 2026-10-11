@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+
+# Generated research artifacts: checkpoints, datasets, logs, results, reports.
+# These are local-only and can be large; regenerate them from configs.
+artifacts/
+*.pt
+*.ckpt
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Streamlit local state
+.streamlit/secrets.toml
+
+# Windows / OneDrive folder metadata
+desktop.ini

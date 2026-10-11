@@ -1,0 +1,17 @@
+# Cross-architecture replication: same task with MLP blocks. Does the same circuit appear, and
+# do the MLPs matter? (Longer: ~3-4x the attention-only runtime on CPU.)
+name: induction_2l_mlp
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: false, d_mlp: 256, norm: pre, positional: alibi}
+task:
+  name: induction_repeat
+  params: {n_symbols: 48, seq_len: 40, min_len: 6, max_len: 16}
+train:
+  steps: 3000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  eval_every: 250
+  eval_size: 512
+  checkpoint_steps: [0, 500, 1000, 2000, 3000]
+  num_threads: 2

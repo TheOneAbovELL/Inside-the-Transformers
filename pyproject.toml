@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transformer-lab"
+version = "0.1.0"
+description = "Inside the Transformer: a local, CPU-friendly mechanistic interpretability laboratory"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# Core dependencies only. Everything runs on CPU; CUDA is used only if present and requested.
+dependencies = [
+    "torch>=2.1",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.30", "pandas>=2.0"]
+diag = ["psutil>=5.9"]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+itl = "transformer_lab.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -p no:asyncio"
+markers = [
+    "slow: trains a model for more than a few seconds (deselect with -m 'not slow')",
+    "scientific: checks known behaviour / controls of interventions",
+]
+filterwarnings = ["ignore::DeprecationWarning:streamlit.*"]

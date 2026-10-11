@@ -1,0 +1,24 @@
+# Context-matching experiment (preregistration configs/preregistration/context_matching_v1.yaml).
+# Identical to induction_2l_attn except the task's pair_mode=shuffled: segments are x1 y1 ... xP yP,
+# only x_i -> y_i in the second segment is scored, and in "shuffled" the second segment's pairs are
+# reordered so that no x is preceded by the same token at both occurrences.
+name: ctx_pairs_shuffled
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: true, norm: pre, positional: alibi}
+task:
+  name: induction_repeat
+  params: {n_symbols: 48, seq_len: 40, min_len: 6, max_len: 16, pair_mode: shuffled}
+train:
+  steps: 3000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  schedule: cosine
+  weight_decay: 0.01
+  grad_clip: 1.0
+  eval_every: 250
+  eval_size: 512
+  log_every: 50
+  checkpoint_every: 500
+  checkpoint_steps: [0, 250, 500, 1000, 2000, 3000]
+  num_threads: 2

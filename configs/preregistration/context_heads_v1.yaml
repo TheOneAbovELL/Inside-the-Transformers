@@ -1,0 +1,23 @@
+# PREREGISTRATION — context_heads_v1 (session 3)
+# Written and frozen AFTER the exploratory per-head analysis of induction_2l_attn seeds 0-2
+# (record *_investigation_context_heads), and BEFORE any per-head analysis of seeds 3 and 4.
+# Seeds 3-4 exist (trained for context_route_v1) but only their layer-0-as-a-group route was measured.
+# Head indices are comparable across seeds because ALiBi fixes head h's slope to 2^(-8(h+1)/4):
+# L0H0 is always the steepest (most recency-biased) head.
+id: context_heads_v1
+
+models:
+  - artifacts/runs/induction_2l_attn_s3_20261011-225823
+  - artifacts/runs/induction_2l_attn_s4_20261011-225823
+
+design:
+  measurement: "context_route_per_sender: ContextCompetition n 512 seed 909, swap_context corruption, denoising path patching of ONE layer-0 head at a time into the induction group's query (and key) inputs; metric logit[A]-logit[B]; 95% bootstrap CI"
+  group: "last-layer heads with induction score >= 0.25 on standard repeats (512, seed 101)"
+
+hypothesis:
+  H4:
+    claim: "The steepest-slope layer-0 head (L0H0) is the dominant single carrier of the query's context."
+    supported: "in BOTH models: R_q(L0H0) lower CI > 0.8 AND R_q(L0H0) lower CI > R_q upper CI of every other layer-0 head AND R_q upper CI < 0.3 for L0H2 and L0H3"
+    contradicted: "in BOTH models: R_q(L0H0) upper CI < 0.5"
+    otherwise: "inconclusive"
+  note: "L0H1 is deliberately unconstrained (exploratory values 0.09 / 0.36 / 0.69 were inconsistent)."

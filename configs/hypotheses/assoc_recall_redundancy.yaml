@@ -1,0 +1,44 @@
+# EXPLORATORY (written 2026-10-11 after seeing the ablation/patching scans of assoc_recall_2l seed 0).
+# Documents the redundancy pattern as testable predictions; confirmatory evidence would need other seeds.
+name: assoc_recall_redundancy_exploratory
+statement: >
+  In the associative-recall model, retrieval is performed redundantly by a group of layer-1 heads
+  (induction score >= 0.5) whose keys are built from layer-0 output. Each group head alone is
+  dispensable; the group is not.
+behavior:
+  metric: logprob
+  description: Log-prob of the queried key's value.
+n_examples: 512
+selection_seed: 101
+test_seed: 202
+reference_seed: 303
+ablation_method: mean
+alpha: 0.05
+candidates:
+  group: {select: threshold, score: induction, layer: 1, min_score: 0.5}
+  layer0: {select: layer, layer: 0}
+  first_group_head: {select: top, score: induction, layer: 1, k: 1}
+predictions:
+  - id: R1_single_head_dispensable
+    claim: Ablating the single most induction-like head changes log-prob by less than 0.5 nats.
+    test: {type: ablate_heads, heads: first_group_head}
+    expect: {direction: none, max_effect: 0.5}
+  - id: R2_group_indispensable
+    claim: Ablating the whole group lowers log-prob by >= 3 nats.
+    test: {type: ablate_heads, heads: group}
+    expect: {direction: decrease, min_effect: 3.0}
+  - id: R3_group_patching
+    claim: Patching the group's z at the query position (query-key corruption) restores >= 80% of the gap.
+    test: {type: patch_heads, heads: group, corruption: query_key, positions: scored}
+    expect: {recovery_min: 0.8}
+  - id: R4_layer0_to_keys
+    claim: Removing layer-0 output from only the group's keys lowers log-prob by >= 3 nats.
+    test: {type: path, sender: layer0, receiver: group, channel: k, replacement: mean}
+    expect: {direction: decrease, min_effect: 3.0}
+  - id: R5_layer0_to_queries
+    claim: Removing layer-0 output from only the group's queries costs < 1 nat.
+    test: {type: path, sender: layer0, receiver: group, channel: q, replacement: mean}
+    expect: {direction: none, max_effect: 1.0}
+    requires: [R4_layer0_to_keys]
+alternatives:
+  - Retrieval happens through a different route (e.g. the query marker), and the group heads are bystanders; R3 would fail.

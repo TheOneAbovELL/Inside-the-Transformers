@@ -1,0 +1,79 @@
+# PREREGISTRATION — context_matching_v1
+# Written and frozen 2026-10-11 BEFORE any context-preference (CP) value was computed on a trained
+# model. The only CP values computed before freezing are on the two hand-wired calibration models
+# (single-token: 0.000; context gain 2: +1.986), which validate the metric, not the hypothesis.
+# The SHA-256 of this file is recorded in artifacts/preregistration_log.jsonl at freezing time.
+# Rationale and competing explanations: docs/preregistration_context_matching_v1.md.
+id: context_matching_v1
+
+models:
+  original:            # contiguous repeats, every second-copy position scored (first session)
+    - artifacts/runs/induction_2l_attn_s0_20261011-195451
+    - artifacts/runs/induction_2l_attn_s1_20261011-195451
+    - artifacts/runs/induction_2l_attn_s2_20261011-200343
+  same_order:          # new: pair-structured contiguous repeats, x -> y scored
+    config: configs/experiments/ctx_pairs_same_order.yaml
+    seeds: [0, 1, 2]
+  shuffled:            # new: identical, but every x's preceding token differs between occurrences
+    config: configs/experiments/ctx_pairs_shuffled.yaml
+    seeds: [0, 1, 2]
+  calibration:         # ground truth for the metric
+    negative: handwired single-token induction (n_symbols 48, n_ctx 40)
+    positive: handwired context-matching induction, context_gain 2.0
+
+measurements:
+  primary:
+    name: context_preference_cp
+    definition: mean over examples of logit[A] - logit[B] at the query, ContextCompetition context_len=1
+    n: 1024
+    seed: 606
+    balance: even-indexed examples have the matching occurrence more recent, odd-indexed earlier
+    uncertainty: 95% percentile bootstrap over examples (2000 resamples)
+  secondary:
+    - CP separately for match-recent and match-earlier examples (recency diagnostic)
+    - selection_rate = P(argmax == A | argmax in {A, B}); either_rate = P(argmax in {A, B})
+    - CP with context_len=2 (n 1024, seed 607)
+    - context_sensitivity (old measure; n 512, seed 404) — reported, not used for any verdict
+    - CP under removal of layer-0 output (all layer-0 heads, plus MLP0 if any) from ONLY the
+      induction group's query / key / value inputs; group = last-layer heads with induction score
+      >= 0.25 on standard contiguous repeats (512 examples, seed 101); replacement = per-position
+      mean over 512 standard repeats (seed 303)
+    - own-task validation accuracy (from the run's summary.json)
+
+validity:
+  metric: handwired single-token |CP| < 0.05 AND handwired context-model CP lower CI > 1.0;
+          otherwise the whole experiment is INVALID
+  model: own-task validation accuracy >= 0.80 AND competition either_rate >= 0.50;
+         otherwise the model is EXCLUDED (listed with the reason)
+  training_contingency: >
+    Pilot = seed 0 of both new conditions at 3000 steps. If either pilot has validation accuracy
+    < 0.80, ALL new runs (both conditions, all seeds) are trained for 6000 steps instead; the
+    3000-step pilots are kept on disk, reported, and excluded from the hypothesis tests.
+
+hypotheses:
+  H1:
+    claim: The original models prefer the earlier occurrence whose preceding token matches the query's.
+    supported: ">= 2 valid original seeds have CP lower CI > 0.5, and no valid seed has CP upper CI < 0"
+    contradicted: ">= 2 valid original seeds have their CP CI entirely within [-0.5, 0.5]"
+    otherwise: inconclusive
+  H2:
+    claim: Context preference depends on training statistics (same_order > shuffled).
+    requires: ">= 2 valid models in each new condition; seeds paired by index"
+    supported: >
+      mean over valid pairs of (CP_same - CP_shuffled) > 0.5 AND for >= 2 pairs the bootstrap CI of
+      CP_same - CP_shuffled (independent samples) lies entirely above 0
+    contradicted: ">= 2 pairs have the CI of CP_same - CP_shuffled entirely within [-0.5, 0.5]"
+    otherwise: inconclusive
+  H3:
+    claim: Context enters through the induction group's QUERIES (Q-composition with layer 0).
+    evaluated_on: every valid model (any condition) whose CP lower CI > 0.5
+    per_model_validity: either_rate under the query removal >= 0.5, else that model is inconclusive
+    per_model_supported: "CP_q-removed mean <= 0.5 x CP_baseline mean AND CP_q-removed upper CI < CP_baseline lower CI"
+    per_model_contradicted: "CP_q-removed lower CI > 0.75 x CP_baseline mean"
+    supported: ">= 2/3 of evaluated models supported"
+    contradicted: ">= 2/3 of evaluated models contradicted"
+    otherwise: inconclusive (or 'not evaluated' if no model qualifies)
+
+multiplicity: >
+  Three hypotheses over up to nine models; no family-wise correction. Verdicts rest on effect-size
+  thresholds plus replication across seeds (2 of 3), not on single p-values.

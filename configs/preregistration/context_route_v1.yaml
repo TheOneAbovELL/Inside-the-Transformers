@@ -1,0 +1,36 @@
+# PREREGISTRATION — context_route_v1 (confirmatory follow-up to context_matching_v1 H3)
+# Written and frozen 2026-10-11 AFTER the exploratory analysis
+# artifacts/experiments/20261011-225623_investigation_context_route_exploratory (6 existing models)
+# suggested that the context signal reaches the induction group through its QUERY inputs, and
+# BEFORE the two confirmation models below were trained. Only those fresh models count.
+id: context_route_v1
+
+models:
+  confirmation:
+    config: configs/experiments/induction_2l_attn.yaml
+    seeds: [3, 4]          # never trained before this file was frozen
+
+design:
+  clean: ContextCompetition (context_len 1), n 512, seed 909 (differs from the exploratory seed 808)
+  corrupt: swap_context — the query's preceding token replaced by the non-matching occurrence's context
+  metric: logit[A] - logit[B]
+  senders: all layer-0 heads
+  receivers: induction group = last-layer heads with induction score >= 0.25 (standard repeats, 512, seed 101)
+  edge_sets:
+    q: layer-0 heads -> group query inputs
+    k: layer-0 heads -> group key inputs
+    v: layer-0 heads -> group value inputs
+  direction: denoise (clean outputs delivered into the corrupted run along one edge set)
+  recovery: R = (patched - corrupt) / (clean - corrupt) on batch means; 95% bootstrap CI (1000)
+  min_gap: 0.5 (logits)
+
+validity:
+  per_model: own-task validation accuracy >= 0.80 AND clean - corrupt gap >= 0.5 (informative)
+  experiment: >= 2 valid models, else inconclusive
+
+hypothesis:
+  H3b:
+    claim: The context signal that drives context preference reaches the induction group through its queries.
+    supported: "in every valid model: R_q lower CI > 0.5 AND R_k upper CI < 0.5 AND R_v upper CI < 0.5"
+    contradicted: "in every valid model: R_q upper CI < 0.5"
+    otherwise: inconclusive

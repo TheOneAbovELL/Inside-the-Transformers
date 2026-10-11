@@ -1,0 +1,57 @@
+# Hypothesis v2 — formulated on 2026-10-11 AFTER exploratory analysis of seed 0 of
+# induction_2l_attn (ALiBi), where v1 (single prev-token head + single induction head) looked wrong:
+# no layer-0 head had a previous-token attention score above its initialisation value, while three
+# layer-0 heads and three layer-1 heads had large causal effects.
+#
+# Because v2 was shaped by seed 0, ONLY SEEDS 1 AND 2 COUNT AS A CONFIRMATORY TEST. Its thresholds
+# were fixed before running it on those seeds. Results on seed 0 are reported but labelled
+# exploratory.
+name: induction_circuit_2l_distributed_v2
+statement: >
+  Induction is implemented by a GROUP of layer-1 heads (those with induction score >= 0.25), whose
+  KEYS are built from the outputs of layer-0 heads (K-composition). No single layer-0 head need have
+  a sharp previous-token pattern: the "previous token" signal may be a recency-weighted mixture
+  spread over several layer-0 heads. The layer-1 group's output, at the answer positions, carries
+  essentially all of the task-relevant information.
+behavior:
+  metric: logprob
+  description: Mean log-prob of the correct next token over second-copy positions.
+n_examples: 512
+selection_seed: 101
+test_seed: 202
+reference_seed: 303
+ablation_method: mean
+alpha: 0.05
+candidates:
+  induction_group: {select: threshold, score: induction, layer: 1, min_score: 0.25}
+  layer0: {select: layer, layer: 0}
+predictions:
+  - id: Q1_group_ablation
+    claim: Mean-ablating the whole induction group destroys performance (>= 2 nats), more than ablating equally many other heads.
+    test: {type: ablate_heads, heads: induction_group}
+    expect: {direction: decrease, min_effect: 2.0}
+    control: {n_samples: 30, exclude: [induction_group], seed: 3}
+  - id: Q2_group_patching
+    claim: Patching the group's z at answer positions (clean -> first-copy-replaced) restores >= 80% of the log-prob gap.
+    test: {type: patch_heads, heads: induction_group, corruption: replace, positions: scored}
+    expect: {recovery_min: 0.8}
+  - id: Q3_layer0_to_keys
+    claim: Removing ALL layer-0 head outputs from ONLY the group's key inputs reduces log-prob by >= 2 nats.
+    test: {type: path, sender: layer0, receiver: induction_group, channel: k, replacement: mean}
+    expect: {direction: decrease, min_effect: 2.0}
+  - id: Q4_layer0_to_queries
+    claim: The same removal from the group's QUERY inputs costs much less (< 1 nat) — the composition is K-, not Q-side.
+    test: {type: path, sender: layer0, receiver: induction_group, channel: q, replacement: mean}
+    expect: {direction: none, max_effect: 1.0}
+  - id: Q5_layer0_to_values
+    claim: The same removal from the group's VALUE inputs costs much less (< 1 nat) — copied content comes from the token embedding.
+    test: {type: path, sender: layer0, receiver: induction_group, channel: v, replacement: mean}
+    expect: {direction: none, max_effect: 1.0}
+  - id: Q6_group_pattern
+    claim: The group, on average, puts more than a third of its attention on the induction target.
+    test: {type: attention_score, score: induction, heads: induction_group}
+    expect: {op: ">", value: 0.33}
+alternatives:
+  - Layer-0 heads influence the group mainly through its queries or values (Q4/Q5 would fail).
+  - The answer is assembled outside the group (e.g. by L1H0 or the direct path); Q2 recovery would be low.
+  - Group heads are individually redundant copies; Q1 holds but single-head ablations understate them.

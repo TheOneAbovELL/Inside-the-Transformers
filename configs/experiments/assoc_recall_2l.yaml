@@ -1,0 +1,16 @@
+# Associative recall with held-out (key, value) pairs and noise tokens.
+name: assoc_recall_2l
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: true, positional: alibi}
+task:
+  name: assoc_recall
+  params: {n_keys: 16, n_values: 16, min_pairs: 2, max_pairs: 8, max_noise: 4, n_noise_symbols: 4, holdout_mod: 5}
+train:
+  steps: 4000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  eval_every: 250
+  eval_size: 512
+  checkpoint_steps: [0, 1000, 2000, 4000]
+  num_threads: 2

@@ -1,0 +1,17 @@
+# Single-pair induction with held-out (A, B) pairs; used for position/distance and distractor
+# sweeps (Tasks 4 and 5). Trained with 0-1 distractor pairs; decoys are evaluation-only (OOD).
+name: induction_pair_2l
+seed: 0
+model: {d_model: 64, n_layers: 2, n_heads: 4, attn_only: true, positional: alibi}
+task:
+  name: induction_pair
+  params: {n_symbols: 32, seq_len: 32, holdout_mod: 5, n_distractor_pairs: 1}
+train:
+  steps: 4000
+  batch_size: 64
+  lr: 1.0e-3
+  warmup_steps: 100
+  eval_every: 250
+  eval_size: 512
+  checkpoint_steps: [0, 1000, 2000, 4000]
+  num_threads: 2
