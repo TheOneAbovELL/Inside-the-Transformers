@@ -27,6 +27,25 @@ replication → conclusion. Every step is a command that writes a reproducible a
 | Experiment registry, reports, comparison, re-run | `experiments/`, `reporting/` |
 | CLI (`itl`) and local Streamlit UI (`itl ui`) | `cli/main.py`, `app/streamlit_app.py` |
 
+## One-click start
+
+Double-click **`start_lab.bat`** (or run `python start.py`). On first use it creates `.venv`,
+installs the project (it asks before downloading anything), checks the imports, and shows a menu:
+
+```
+1  Open the lab (web interface in your browser)   [Enter]
+2  Quick health check (environment + end-to-end smoke test)
+3  Run the full test suite (~3-4 minutes)
+4  Reproduction audit of all trained runs
+5  List trained runs and experiment records
+6  Open a terminal with the `itl` command ready
+0  Quit
+```
+
+Each item also runs directly: `python start.py ui|check|test|audit|runs|shell|env`.
+The web interface binds to localhost only; close it with Ctrl+C in the launcher window.
+(The batch file is deliberately not called `start.bat`: `start` is a built-in `cmd` command.)
+
 ## Install (Windows, CPU)
 
 Tested with Python 3.13.3 and torch 2.10.0+cpu on Windows 11.
